@@ -1,71 +1,53 @@
-from django.shortcuts import render
-from bs4 import BeautifulSoup
-import requests
-
-
-URL_MST = 'https://news.mit.edu/'
-URL_CAM = 'https://www.cam.ac.uk/research?ucam-ref=home-menu/'
-HOST_CAM = 'https://www.cam.ac.uk'
-URL_RISE = 'https://news.rice.edu/tag/research/'
-
-
-news_mst = []
-news_cam = []
-news_rise = []
-
-
-def get_mst():
-    r = requests.get(URL_MST).text
-    soup = BeautifulSoup(r, 'lxml')
-    posts = soup.find_all(class_='front-page--news-article--teaser--title--link')
-
-    for item in posts:
-        data_mst = {'title': item.text, 'link': URL_MST + item['href']}
-        news_mst.append(data_mst)
+from django.contrib.auth.models import User
+from django.urls import reverse
+from django.views.generic import TemplateView
+from django.contrib.auth import authenticate, login
+from django.shortcuts import redirect, render
 
 
 
+class ContactsView(TemplateView):
+    template_name = "contacts.html"
+
+
+class LoginView(TemplateView):
+    template_name = "registration/login.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        context = {}
+        if request.method == 'POST':
+            username = request.POST['username']
+            password = request.POST['password']
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect("/")
+            else:
+                context['error'] = "Login or password is incorrect"
+        return render(request, self.template_name, context)
 
 
 
 
-def get_cam():
-    r = requests.get(URL_CAM).text
-    soup = BeautifulSoup(r, 'lxml')
-    posts = soup.find_all(class_='cam-listing-title')
-    for item in posts:
-        data_cam = {'title': item.text, 'link': HOST_CAM + item.find('a').get('href')}
-        news_cam.append(data_cam)
+class CreateView(TemplateView):
 
+    template_name = "registration/register.html"
 
-get_cam()
+    def dispatch(self, request, *args, **kwargs):
+        if request.method == 'POST':
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            password = request.POST.get('password')
+            password2 = request.POST.get('password2')
 
+            if password == password2:
+                User.objects.create_user(username, email, password)
+                return redirect(reverse("home"))
 
-
-def get_rise():
-    r = requests.get(URL_RISE).text
-    soup = BeautifulSoup(r, 'lxml')
-    posts = soup.find_all(class_='entry-title')
-    for item in posts:
-        data_rise = {'title': item.text, 'link': item.find('a').get('href')}
-        news_rise.append(data_rise)
+        return render(request, self.template_name)
 
 
 
-get_rise()
-get_mst()
-get_cam()
-
-
-
-def home(requests):
-    context = {
-        'news_mst': news_mst,
-        'news_cam': news_cam,
-        'news_rise': news_rise,
-
-    }
-    return render(requests, 'news_app/home.html', context)
 
 
 
